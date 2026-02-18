@@ -1,0 +1,38 @@
+/* ─── Night mode toggle button ─────────────────────────────────────────────── */
+
+#myEnterARButton {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.3s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+#myEnterARButton:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+#myEnterARButton:active {
+  transform: scale(0.93);
+}
+
+body.night-mode #myEnterARButton {
+  background-color: rgba(30, 30, 30, 0.88);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}

@@ -1,0 +1,69 @@
+<html>
+  <head>
+    <title>AR/VR Learning</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  </head>
+  <body>
+    <a-scene>
+      <a-assets>
+        <img id="display-img" src="ARVR_Learning_Background.png">
+      </a-assets>
+
+      <a-box    id="box"      position="-1 0.5 -3"  rotation="0 45 0" color="#4CC3D9"></a-box>
+      <a-sphere id="sphere"   position="0 1.25 -5"  radius="1.25"     color="#EF2D5E"></a-sphere>
+      <a-cylinder id="cylinder" position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
+      <a-plane  id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
+
+      <!-- Image display: square plane, adjacent to back edge of floor, behind the sphere -->
+      <a-plane  id="image-plane" src="#display-img"
+                position="0 1.25 -6"
+                width="5" height="5"></a-plane>
+
+      <a-sky    id="sky"      color="#ECECEC"></a-sky>
+    </a-scene>
+
+    <!-- Night mode toggle: circle button, upper-right viewport overlay -->
+    <a id="myEnterARButton" href="#" title="Toggle Night Mode">💡</a>
+
+    <script>
+      const btn      = document.querySelector('#myEnterARButton');
+      const sky      = document.querySelector('#sky');
+      const box      = document.querySelector('#box');
+      const sphere   = document.querySelector('#sphere');
+      const cylinder = document.querySelector('#cylinder');
+      const plane    = document.querySelector('#plane');
+
+      // Each primitive: its day color and the emissive glow color for night
+      const primitives = [
+        { el: box,      dayColor: '#4CC3D9', glowColor: '#4CC3D9' },
+        { el: sphere,   dayColor: '#EF2D5E', glowColor: '#EF2D5E' },
+        { el: cylinder, dayColor: '#FFC65D', glowColor: '#FFC65D' },
+        { el: plane,    dayColor: '#7BC8A4', glowColor: '#7BC8A4' },
+      ];
+
+      let isNightMode = false;
+
+      btn.addEventListener('click', function (e) {
+        e.preventDefault();
+        isNightMode = !isNightMode;
+
+        // Toggle sky
+        sky.setAttribute('color', isNightMode ? '#000000' : '#ECECEC');
+
+        // Toggle glow on each primitive via A-Frame material emissive
+        primitives.forEach(function (p) {
+          if (isNightMode) {
+            p.el.setAttribute('material', 'emissive', p.glowColor);
+            p.el.setAttribute('material', 'emissiveIntensity', 0.75);
+          } else {
+            p.el.setAttribute('material', 'emissiveIntensity', 0);
+          }
+        });
+
+        // Toggle CSS night-mode class for the 2D button
+        document.body.classList.toggle('night-mode', isNightMode);
+      });
+    </script>
+  </body>
+</html>
