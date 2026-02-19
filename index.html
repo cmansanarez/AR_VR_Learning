@@ -1,3 +1,4 @@
+<!DOCTYPE html>
 <html>
   <head>
     <title>AR/VR Learning</title>
@@ -7,43 +8,192 @@
   <body>
     <a-scene>
       <a-assets>
-        <img id="display-img" src="ARVR_Learning_Background.png">
+        <img   id="display-img" src="ARVR_Learning_Background.png">
+        <img   id="rainbow-img" src="rainbow.png">
+        <audio id="bg-audio"    src="sentences%20unfinished.m4a" preload="auto" loop></audio>
       </a-assets>
 
-      <a-box    id="box"      position="-1 0.5 -3"  rotation="0 45 0" color="#4CC3D9"></a-box>
-      <a-sphere id="sphere"   position="0 1.25 -5"  radius="1.25"     color="#EF2D5E"></a-sphere>
-      <a-cylinder id="cylinder" position="1 0.75 -3" radius="0.5" height="1.5" color="#FFC65D"></a-cylinder>
-      <a-plane  id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#7BC8A4"></a-plane>
+      <a-box    id="box"      position="-1 0.5 -3"  rotation="0 45 0" color="#304ffe"></a-box>
+      <a-sphere id="sphere"   position="0 1.25 -5"  radius="1.25"     color="#ff1d89"></a-sphere>
+      <a-cylinder id="cylinder" position="1 0.75 -3" radius="0.5" height="1.5" color="#ffec00"></a-cylinder>
+      <a-plane  id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#bcf804"
+                animation__move="property: position; from: 8 0 -4; to: -8 0 -4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeInOutSine"></a-plane>
 
       <!-- Image display: square plane, adjacent to back edge of floor, behind the sphere -->
       <a-plane  id="image-plane" src="#display-img"
                 position="0 1.25 -6"
                 width="5" height="5"></a-plane>
 
+      <!-- Timed trigger overlay: fades in 3s after animation starts, loops every 3s -->
+      <a-plane  id="image-plane-trigger" src="#rainbow-img"
+                position="0 1.25 -5.9"
+                width="5" height="5"
+                material="transparent: true; opacity: 0"></a-plane>
+
       <a-sky    id="sky"      color="#ECECEC"></a-sky>
+
+      <!-- Explicit camera matching A-Frame's default eye height of 1.6 -->
+      <a-camera id="camera" position="0 1.6 0"></a-camera>
     </a-scene>
 
     <!-- Night mode toggle: circle button, upper-right viewport overlay -->
     <a id="myEnterARButton" href="#" title="Toggle Night Mode">💡</a>
 
+    <!-- Mute button: below night mode button, upper-right viewport overlay -->
+    <a id="muteBtn" href="#" title="Mute / Unmute">🔊</a>
+
+    <!-- Rainbow easter egg button: night-mode only, below mute button -->
+    <a id="rainbowBtn" href="#" title="✨ Easter Egg">🌈</a>
+
+    <!-- Play/Pause button: centered bottom of viewport -->
+    <a id="playPauseBtn" href="#" title="Play / Pause Animation">⏸️</a>
+
     <script>
-      const btn      = document.querySelector('#myEnterARButton');
-      const sky      = document.querySelector('#sky');
-      const box      = document.querySelector('#box');
-      const sphere   = document.querySelector('#sphere');
-      const cylinder = document.querySelector('#cylinder');
-      const plane    = document.querySelector('#plane');
+      const btn          = document.querySelector('#myEnterARButton');
+      const muteBtn      = document.querySelector('#muteBtn');
+      const rainbowBtn   = document.querySelector('#rainbowBtn');
+      const playPauseBtn = document.querySelector('#playPauseBtn');
+      const cameraEl     = document.querySelector('#camera');
+      const sky          = document.querySelector('#sky');
+      const box          = document.querySelector('#box');
+      const sphere       = document.querySelector('#sphere');
+      const cylinder     = document.querySelector('#cylinder');
+      const plane              = document.querySelector('#plane');
+      const imagePlaneTrigger  = document.querySelector('#image-plane-trigger');
+      const bgAudio            = document.querySelector('#bg-audio');
 
       // Each primitive: its day color and the emissive glow color for night
       const primitives = [
-        { el: box,      dayColor: '#4CC3D9', glowColor: '#4CC3D9' },
-        { el: sphere,   dayColor: '#EF2D5E', glowColor: '#EF2D5E' },
-        { el: cylinder, dayColor: '#FFC65D', glowColor: '#FFC65D' },
-        { el: plane,    dayColor: '#7BC8A4', glowColor: '#7BC8A4' },
+        { el: box,      dayColor: '#304ffe', glowColor: '#304ffe' },
+        { el: sphere,   dayColor: '#ff1d89', glowColor: '#ff1d89' },
+        { el: cylinder, dayColor: '#ffec00', glowColor: '#ffec00' },
+        { el: plane,    dayColor: '#bcf804', glowColor: '#bcf804' },
       ];
 
-      let isNightMode = false;
+      let isNightMode      = false;
+      let isAnimating      = false;
+      let isMuted          = false;
+      let isImageVisible   = false;
+      let triggerTimeout   = null;
+      let triggerInterval  = null;
 
+      // Easter egg destination — swap this URL when the target page is ready
+      const EASTER_EGG_URL  = 'rainbow.html';
+
+      // Original resting positions / rotations
+      const PLANE_ORIGIN    = '0 0 -4';
+      const SPHERE_ORIGIN   = '0 1.25 -5';
+      const SPHERE_TARGET   = '0 4 -5';
+      const BOX_ROTATION    = '0 45 0';
+      const CYLINDER_SCALE  = '1 1 1';
+
+      // Fade the trigger overlay in or out by animating material.opacity.
+      // The remove-then-add pattern restarts the tween cleanly each time.
+      function setImageTriggerFade(show) {
+        isImageVisible = show;
+        imagePlaneTrigger.removeAttribute('animation__fade');
+        imagePlaneTrigger.setAttribute('animation__fade',
+          'property: material.opacity; from: ' + (show ? 0 : 1) + '; to: ' + (show ? 1 : 0) +
+          '; dur: 800; easing: ' + (show ? 'easeInSine' : 'easeOutSine'));
+      }
+
+      // Wait 3 s, then alternate the overlay visible/hidden every 3 s.
+      // This setTimeout is the event-listener trigger: the timed event fires
+      // after a delay and kicks off the repeating interval.
+      function startImageTrigger() {
+        triggerTimeout = setTimeout(function () {
+          setImageTriggerFade(true);
+          triggerInterval = setInterval(function () {
+            setImageTriggerFade(!isImageVisible);
+          }, 3000);
+        }, 3000);
+      }
+
+      // Cancel pending timers and instantly hide the overlay.
+      function stopImageTrigger() {
+        clearTimeout(triggerTimeout);
+        clearInterval(triggerInterval);
+        triggerTimeout  = null;
+        triggerInterval = null;
+        imagePlaneTrigger.removeAttribute('animation__fade');
+        imagePlaneTrigger.setAttribute('material', 'opacity', 0);
+        isImageVisible = false;
+      }
+
+      // Play or pause background audio. On full stop (night mode off) the
+      // caller also resets currentTime so the next session starts from the top.
+      function setAudio(playing) {
+        if (playing) {
+          bgAudio.play().catch(function () {});
+        } else {
+          bgAudio.pause();
+        }
+      }
+
+      // Toggle volume between 0 (muted) and 1 (full). Mute is independent of
+      // play/pause — muting while paused means the audio will be silent when resumed.
+      function setMute(muted) {
+        bgAudio.volume = muted ? 0 : 1;
+        muteBtn.textContent = muted ? '🔇' : '🔊';
+      }
+
+      function setPlaneAnimation(playing) {
+        plane.setAttribute('animation__move', 'autoplay', playing);
+      }
+
+      function resetPlanePosition() {
+        plane.setAttribute('position', PLANE_ORIGIN);
+      }
+
+      // Squash-and-stretch scale pulse on the cylinder: X/Z expand while Y
+      // compresses (classic animation principle), alternating on a tight loop.
+      // Resets to uniform 1 1 1 scale when stopped.
+      function setCylinderPulse(pulsing) {
+        if (pulsing) {
+          cylinder.setAttribute('animation__pulse',
+            'property: scale; from: 1 1 1; to: 1.5 0.6 1.5; dir: alternate; loop: true; dur: 600; easing: easeInOutSine');
+        } else {
+          cylinder.removeAttribute('animation__pulse');
+          cylinder.setAttribute('scale', CYLINDER_SCALE);
+        }
+      }
+
+      // Spin the box counter-clockwise (negative Y) on a continuous loop,
+      // or stop and snap back to its original 45° resting rotation.
+      function setBoxSpin(spinning) {
+        if (spinning) {
+          box.setAttribute('animation__spin',
+            'property: rotation; from: 0 45 0; to: 0 -315 0; loop: true; dur: 4000; easing: linear');
+        } else {
+          box.removeAttribute('animation__spin');
+          box.setAttribute('rotation', BOX_ROTATION);
+        }
+      }
+
+      // Tween the sphere toward its celestial position or back to origin.
+      // Removing the opposing animation before adding the new one lets the
+      // tween start from wherever the sphere currently is, so interruptions
+      // always feel smooth rather than jumping.
+      function setSpherePosition(rising) {
+        if (rising) {
+          sphere.removeAttribute('animation__fall');
+          sphere.setAttribute('animation__rise',
+            'property: position; to: ' + SPHERE_TARGET + '; dur: 2000; easing: easeInOutQuad');
+        } else {
+          sphere.removeAttribute('animation__rise');
+          sphere.setAttribute('animation__fall',
+            'property: position; to: ' + SPHERE_ORIGIN + '; dur: 2000; easing: easeInOutQuad');
+        }
+      }
+
+      // Sync the play/pause button label to the current state
+      function updatePlayPauseLabel() {
+        // ▶️ means "ready to play" (night mode, animation stopped)
+        // ⏸️ means "currently playing" (night mode, running) OR day mode (passive resting state)
+        playPauseBtn.textContent = (isNightMode && !isAnimating) ? '▶️' : '⏸️';
+      }
+
+      // ── Night mode toggle ──────────────────────────────────────────────────────
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         isNightMode = !isNightMode;
@@ -61,8 +211,82 @@
           }
         });
 
-        // Toggle CSS night-mode class for the 2D button
+        // Toggle CSS night-mode class for the 2D buttons
         document.body.classList.toggle('night-mode', isNightMode);
+
+        if (isNightMode) {
+          // Entering night mode: start animations and audio automatically
+          isAnimating = true;
+          setPlaneAnimation(true);
+          setSpherePosition(true);
+          setBoxSpin(true);
+          setCylinderPulse(true);
+          setAudio(true);
+          startImageTrigger();
+        } else {
+          // Leaving night mode: stop everything and reset to origin
+          isAnimating = false;
+          setPlaneAnimation(false);
+          resetPlanePosition();
+          setSpherePosition(false);
+          setBoxSpin(false);
+          setCylinderPulse(false);
+          setAudio(false);
+          bgAudio.currentTime = 0;
+          stopImageTrigger();
+          cameraEl.removeAttribute('animation__zoom');
+          cameraEl.setAttribute('position', '0 1.6 0');
+        }
+
+        updatePlayPauseLabel();
+      });
+
+      // ── Play / Pause button ────────────────────────────────────────────────────
+      playPauseBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        if (!isNightMode) return; // button is passive in day mode
+
+        isAnimating = !isAnimating;
+        setPlaneAnimation(isAnimating);
+        setSpherePosition(isAnimating);
+        setBoxSpin(isAnimating);
+        setCylinderPulse(isAnimating);
+        setAudio(isAnimating);
+        if (isAnimating) { startImageTrigger(); } else { stopImageTrigger(); }
+
+        // When pausing, snap the plane back to its origin
+        if (!isAnimating) {
+          resetPlanePosition();
+        }
+
+        updatePlayPauseLabel();
+      });
+
+      // ── Mute button ───────────────────────────────────────────────────────────
+      muteBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        isMuted = !isMuted;
+        setMute(isMuted);
+      });
+
+      // ── Rainbow easter egg button ─────────────────────────────────────────────
+      // Eases the camera from its current position into the image-plane, then
+      // opens the easter egg URL once the animationcomplete event fires.
+      rainbowBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+
+        // Remove any in-progress zoom so a repeat click restarts cleanly
+        cameraEl.removeAttribute('animation__zoom');
+
+        // One-shot listener: fires exactly once when the zoom finishes
+        function onZoomComplete() {
+          cameraEl.removeEventListener('animationcomplete__zoom', onZoomComplete);
+          window.open(EASTER_EGG_URL, '_blank');
+        }
+        cameraEl.addEventListener('animationcomplete__zoom', onZoomComplete);
+
+        cameraEl.setAttribute('animation__zoom',
+          'property: position; to: 0 1.25 -6; dur: 2500; easing: easeInOutCubic');
       });
     </script>
   </body>

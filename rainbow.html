@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🌈</title>
+    <script src="https://unpkg.com/hydra-synth@1.4.0/dist/hydra-synth.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body { background: #000; overflow: hidden; }
+      canvas {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100vw;
+        height: 100vh;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="hydra-canvas"></canvas>
+    <script>
+      const canvas = document.getElementById('hydra-canvas');
+
+      function getPixelDims() {
+        const dpr = window.devicePixelRatio || 1;
+        return {
+          w: Math.floor(window.innerWidth  * dpr),
+          h: Math.floor(window.innerHeight * dpr),
+          dpr
+        };
+      }
+
+      // Set canvas buffer dimensions to match physical pixels
+      function syncCanvasSize() {
+        const { w, h } = getPixelDims();
+        canvas.width  = w;
+        canvas.height = h;
+      }
+
+      syncCanvasSize();
+
+      const hydra = new Hydra({
+        canvas,
+        detectAudio: false,
+        autoLoop: true
+      });
+
+      // Align Hydra's internal render resolution to physical pixels
+      (function setHydraRes() {
+        const { w, h } = getPixelDims();
+        hydra.setResolution(w, h);
+      })();
+
+      // Resize handler — updates buffer and Hydra resolution, no re-init
+      let resizeTimer;
+      window.addEventListener('resize', function () {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function () {
+          syncCanvasSize();
+          const { w, h } = getPixelDims();
+          hydra.setResolution(w, h);
+        }, 100);
+      });
+
+      // ── Sketch ──────────────────────────────────────────────────────────
+
+      pattern = () => noise(20, 1).repeatY(1)
+      speed = 0.5
+
+      // Base layer -> o0
+      pattern()
+        .scrollX(0.1, 0.1)
+        .add(pattern(), 0.7)
+        .modulateScale(osc(5, 0.5), 1, 0.2)
+        .modulate(noise(2, 0.5))
+        .brightness(0.7)
+        .contrast(2)
+        .out(o0)
+
+      // Video
+      s0.initVideo("https://files.catbox.moe/h01s2z.mp4")
+
+      // Processed version
+      processed = () =>
+        src(o0)
+          .modulate(src(s0), [0, 1].fast(1.5).smooth(0.1))
+          .contrast(1.2)
+
+      // Morph loop: 0 -> 1 -> 0 -> 1...
+      mix = () => [0, 1, 0].smooth(1).fast(0.8)
+
+      src(s0)
+        .blend(processed(), mix())
+        .out(o1)
+
+      render(o1)
+    </script>
+  </body>
+</html>

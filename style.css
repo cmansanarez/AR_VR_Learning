@@ -36,3 +36,119 @@ body.night-mode #myEnterARButton {
   border-color: rgba(255, 255, 255, 0.18);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
 }
+
+/* ─── Mute button ───────────────────────────────────────────────────────────── */
+
+#muteBtn {
+  position: fixed;
+  top: 88px;   /* 20px top + 56px light button + 12px gap */
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.3s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+#muteBtn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+#muteBtn:active {
+  transform: scale(0.93);
+}
+
+body.night-mode #muteBtn {
+  background-color: rgba(30, 30, 30, 0.88);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* ─── Rainbow easter egg button ─────────────────────────────────────────────── */
+
+#rainbowBtn {
+  position: fixed;
+  top: 156px;  /* 20px top + 56px light + 12px gap + 56px mute + 12px gap */
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(30, 30, 30, 0.88);
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  font-size: 26px;
+  display: none;  /* hidden in day mode; overridden to flex by body.night-mode below */
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+  z-index: 9999;
+  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+body.night-mode #rainbowBtn {
+  display: flex;  /* only visible in night mode */
+}
+
+#rainbowBtn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+#rainbowBtn:active {
+  transform: scale(0.93);
+}
+
+/* ─── Play / Pause button ──────────────────────────────────────────────────── */
+
+#playPauseBtn {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  transition: box-shadow 0.1s ease, background-color 0.3s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+#playPauseBtn:hover {
+  transform: translateX(-50%) scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+#playPauseBtn:active {
+  transform: translateX(-50%) scale(0.93);
+}
+
+body.night-mode #playPauseBtn {
+  background-color: rgba(30, 30, 30, 0.88);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
