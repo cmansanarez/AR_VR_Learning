@@ -45,15 +45,11 @@
     <!-- Rainbow easter egg button: night-mode only, below mute button -->
     <a id="rainbowBtn" href="#" title="✨ Easter Egg">🌈</a>
 
-    <!-- Play/Pause button: centered bottom of viewport -->
-    <a id="playPauseBtn" href="#" title="Play / Pause Animation">⏸️</a>
-
     <script>
-      const btn          = document.querySelector('#myEnterARButton');
-      const muteBtn      = document.querySelector('#muteBtn');
-      const rainbowBtn   = document.querySelector('#rainbowBtn');
-      const playPauseBtn = document.querySelector('#playPauseBtn');
-      const cameraEl     = document.querySelector('#camera');
+      const btn        = document.querySelector('#myEnterARButton');
+      const muteBtn    = document.querySelector('#muteBtn');
+      const rainbowBtn = document.querySelector('#rainbowBtn');
+      const cameraEl   = document.querySelector('#camera');
       const sky          = document.querySelector('#sky');
       const box          = document.querySelector('#box');
       const sphere       = document.querySelector('#sphere');
@@ -71,7 +67,6 @@
       ];
 
       let isNightMode      = false;
-      let isAnimating      = false;
       let isMuted          = false;
       let isImageVisible   = false;
       let triggerTimeout   = null;
@@ -186,13 +181,6 @@
         }
       }
 
-      // Sync the play/pause button label to the current state
-      function updatePlayPauseLabel() {
-        // ▶️ means "ready to play" (night mode, animation stopped)
-        // ⏸️ means "currently playing" (night mode, running) OR day mode (passive resting state)
-        playPauseBtn.textContent = (isNightMode && !isAnimating) ? '▶️' : '⏸️';
-      }
-
       // ── Night mode toggle ──────────────────────────────────────────────────────
       btn.addEventListener('click', function (e) {
         e.preventDefault();
@@ -216,7 +204,6 @@
 
         if (isNightMode) {
           // Entering night mode: start animations and audio automatically
-          isAnimating = true;
           setPlaneAnimation(true);
           setSpherePosition(true);
           setBoxSpin(true);
@@ -225,7 +212,6 @@
           startImageTrigger();
         } else {
           // Leaving night mode: stop everything and reset to origin
-          isAnimating = false;
           setPlaneAnimation(false);
           resetPlanePosition();
           setSpherePosition(false);
@@ -237,29 +223,6 @@
           cameraEl.removeAttribute('animation__zoom');
           cameraEl.setAttribute('position', '0 1.6 0');
         }
-
-        updatePlayPauseLabel();
-      });
-
-      // ── Play / Pause button ────────────────────────────────────────────────────
-      playPauseBtn.addEventListener('click', function (e) {
-        e.preventDefault();
-        if (!isNightMode) return; // button is passive in day mode
-
-        isAnimating = !isAnimating;
-        setPlaneAnimation(isAnimating);
-        setSpherePosition(isAnimating);
-        setBoxSpin(isAnimating);
-        setCylinderPulse(isAnimating);
-        setAudio(isAnimating);
-        if (isAnimating) { startImageTrigger(); } else { stopImageTrigger(); }
-
-        // When pausing, snap the plane back to its origin
-        if (!isAnimating) {
-          resetPlanePosition();
-        }
-
-        updatePlayPauseLabel();
       });
 
       // ── Mute button ───────────────────────────────────────────────────────────
