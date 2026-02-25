@@ -13,27 +13,32 @@
         <audio id="bg-audio"    src="sentences%20unfinished.m4a" preload="auto" loop></audio>
       </a-assets>
 
-      <a-box    id="box"      position="-1 0.5 -3"  rotation="0 45 0" color="#304ffe"></a-box>
-      <a-sphere id="sphere"   position="0 1.25 -5"  radius="1.25"     color="#ff1d89"></a-sphere>
-      <a-cylinder id="cylinder" position="1 0.75 -3" radius="0.5" height="1.5" color="#ffec00"></a-cylinder>
-      <a-plane  id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#bcf804"
-                animation__move="property: position; from: 8 0 -4; to: -8 0 -4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeInOutSine"></a-plane>
+      <!-- ── Day environment (camera faces -Z) ────────────────────────────── -->
+      <a-box      id="box"      position="-1 0.5 -3"  rotation="0 45 0"  color="#304ffe"></a-box>
+      <a-sphere   id="sphere"   position="0 1.25 -5"  radius="1.25"      color="#ff1d89"></a-sphere>
+      <a-cylinder id="cylinder" position="1 0.75 -3"  radius="0.5" height="1.5" color="#ffec00"></a-cylinder>
+      <a-plane    id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#bcf804"></a-plane>
+      <a-plane    id="image-plane"         src="#display-img" position="0 1.25 -6"   width="5" height="5"></a-plane>
+      <a-plane    id="image-plane-trigger" src="#rainbow-img"  position="0 1.25 -5.9" width="5" height="5"
+                  material="transparent: true; opacity: 0"></a-plane>
 
-      <!-- Image display: square plane, adjacent to back edge of floor, behind the sphere -->
-      <a-plane  id="image-plane" src="#display-img"
-                position="0 1.25 -6"
-                width="5" height="5"></a-plane>
+      <!-- ── Night environment (camera faces +Z after 180° rig rotation) ─── -->
+      <a-box      id="night-box"      position="1 0.5 3"   rotation="0 -45 0" color="#7c4dff" visible="false"></a-box>
+      <a-sphere   id="night-sphere"   position="0 1.25 5"  radius="1.25"      color="#00e5ff" visible="false"></a-sphere>
+      <a-cylinder id="night-cylinder" position="-1 0.75 3" radius="0.5" height="1.5" color="#ff6d00" visible="false"></a-cylinder>
+      <a-plane    id="night-plane"    position="0 0 4"     rotation="-90 0 0" width="4" height="4" color="#1a237e" visible="false"
+                  animation__move="property: position; from: -8 0 4; to: 8 0 4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeInOutSine"></a-plane>
+      <a-plane    id="night-image-plane"         src="#display-img" position="0 1.25 6"   width="5" height="5" visible="false"></a-plane>
+      <a-plane    id="night-image-plane-trigger" src="#rainbow-img"  position="0 1.25 5.9" width="5" height="5"
+                  material="transparent: true; opacity: 0" visible="false"></a-plane>
 
-      <!-- Timed trigger overlay: fades in 3s after animation starts, loops every 3s -->
-      <a-plane  id="image-plane-trigger" src="#rainbow-img"
-                position="0 1.25 -5.9"
-                width="5" height="5"
-                material="transparent: true; opacity: 0"></a-plane>
+      <a-sky id="sky" color="#ECECEC"></a-sky>
 
-      <a-sky    id="sky"      color="#ECECEC"></a-sky>
-
-      <!-- Explicit camera matching A-Frame's default eye height of 1.6 -->
-      <a-camera id="camera" position="0 1.6 0"></a-camera>
+      <!-- Camera rig: holds world position and Y-rotation for environment switching.
+           The inner camera handles look-controls and zoom movement independently. -->
+      <a-entity id="camera-rig" position="0 1.6 0">
+        <a-camera id="camera"></a-camera>
+      </a-entity>
     </a-scene>
 
     <!-- Night mode toggle: circle button, upper-right viewport overlay -->
@@ -49,52 +54,61 @@
       const btn        = document.querySelector('#myEnterARButton');
       const muteBtn    = document.querySelector('#muteBtn');
       const rainbowBtn = document.querySelector('#rainbowBtn');
-      const cameraEl   = document.querySelector('#camera');
-      const sky          = document.querySelector('#sky');
-      const box          = document.querySelector('#box');
-      const sphere       = document.querySelector('#sphere');
-      const cylinder     = document.querySelector('#cylinder');
-      const plane              = document.querySelector('#plane');
-      const imagePlaneTrigger  = document.querySelector('#image-plane-trigger');
-      const bgAudio            = document.querySelector('#bg-audio');
+      const cameraRig  = document.querySelector('#camera-rig');
+      const sky        = document.querySelector('#sky');
 
-      // Each primitive: its day color and the emissive glow color for night
-      const primitives = [
-        { el: box,      dayColor: '#304ffe', glowColor: '#304ffe' },
-        { el: sphere,   dayColor: '#ff1d89', glowColor: '#ff1d89' },
-        { el: cylinder, dayColor: '#ffec00', glowColor: '#ffec00' },
-        { el: plane,    dayColor: '#bcf804', glowColor: '#bcf804' },
+      // Day environment elements (visibility-toggled only — no animations)
+      const dayEls = [
+        document.querySelector('#box'),
+        document.querySelector('#sphere'),
+        document.querySelector('#cylinder'),
+        document.querySelector('#plane'),
+        document.querySelector('#image-plane'),
+        document.querySelector('#image-plane-trigger'),
       ];
 
-      let isNightMode      = false;
-      let isMuted          = false;
-      let isImageVisible   = false;
-      let triggerTimeout   = null;
-      let triggerInterval  = null;
+      // Night environment elements
+      const nightBox               = document.querySelector('#night-box');
+      const nightSphere            = document.querySelector('#night-sphere');
+      const nightCylinder          = document.querySelector('#night-cylinder');
+      const nightPlane             = document.querySelector('#night-plane');
+      const nightImagePlane        = document.querySelector('#night-image-plane');
+      const nightImagePlaneTrigger = document.querySelector('#night-image-plane-trigger');
 
-      // Easter egg destination — swap this URL when the target page is ready
-      const EASTER_EGG_URL  = 'rainbow.html';
+      // Night primitives that receive emissive glow + visibility toggling
+      const nightPrimitives = [
+        { el: nightBox,      glowColor: '#7c4dff' },
+        { el: nightSphere,   glowColor: '#00e5ff' },
+        { el: nightCylinder, glowColor: '#ff6d00' },
+        { el: nightPlane,    glowColor: '#1a237e' },
+      ];
 
-      // Original resting positions / rotations
-      const PLANE_ORIGIN    = '0 0 -4';
-      const SPHERE_ORIGIN   = '0 1.25 -5';
-      const SPHERE_TARGET   = '0 4 -5';
-      const BOX_ROTATION    = '0 45 0';
-      const CYLINDER_SCALE  = '1 1 1';
+      const bgAudio = document.querySelector('#bg-audio');
 
-      // Fade the trigger overlay in or out by animating material.opacity.
-      // The remove-then-add pattern restarts the tween cleanly each time.
+      let isNightMode    = false;
+      let isMuted        = false;
+      let isImageVisible = false;
+      let triggerTimeout  = null;
+      let triggerInterval = null;
+
+      const EASTER_EGG_URL = 'rainbow.html';
+
+      // Night environment resting positions / rotations
+      const NIGHT_PLANE_ORIGIN  = '0 0 4';
+      const NIGHT_SPHERE_ORIGIN = '0 1.25 5';
+      const NIGHT_SPHERE_TARGET = '0 4 5';
+      const NIGHT_BOX_ROTATION  = '0 -45 0';
+      const CYLINDER_SCALE      = '1 1 1';
+
+      // Fade the night trigger overlay in or out.
       function setImageTriggerFade(show) {
         isImageVisible = show;
-        imagePlaneTrigger.removeAttribute('animation__fade');
-        imagePlaneTrigger.setAttribute('animation__fade',
+        nightImagePlaneTrigger.removeAttribute('animation__fade');
+        nightImagePlaneTrigger.setAttribute('animation__fade',
           'property: material.opacity; from: ' + (show ? 0 : 1) + '; to: ' + (show ? 1 : 0) +
           '; dur: 800; easing: ' + (show ? 'easeInSine' : 'easeOutSine'));
       }
 
-      // Wait 3 s, then alternate the overlay visible/hidden every 3 s.
-      // This setTimeout is the event-listener trigger: the timed event fires
-      // after a delay and kicks off the repeating interval.
       function startImageTrigger() {
         triggerTimeout = setTimeout(function () {
           setImageTriggerFade(true);
@@ -104,19 +118,16 @@
         }, 3000);
       }
 
-      // Cancel pending timers and instantly hide the overlay.
       function stopImageTrigger() {
         clearTimeout(triggerTimeout);
         clearInterval(triggerInterval);
         triggerTimeout  = null;
         triggerInterval = null;
-        imagePlaneTrigger.removeAttribute('animation__fade');
-        imagePlaneTrigger.setAttribute('material', 'opacity', 0);
+        nightImagePlaneTrigger.removeAttribute('animation__fade');
+        nightImagePlaneTrigger.setAttribute('material', 'opacity', 0);
         isImageVisible = false;
       }
 
-      // Play or pause background audio. On full stop (night mode off) the
-      // caller also resets currentTime so the next session starts from the top.
       function setAudio(playing) {
         if (playing) {
           bgAudio.play().catch(function () {});
@@ -125,59 +136,48 @@
         }
       }
 
-      // Toggle volume between 0 (muted) and 1 (full). Mute is independent of
-      // play/pause — muting while paused means the audio will be silent when resumed.
       function setMute(muted) {
         bgAudio.volume = muted ? 0 : 1;
         muteBtn.textContent = muted ? '🔇' : '🔊';
       }
 
       function setPlaneAnimation(playing) {
-        plane.setAttribute('animation__move', 'autoplay', playing);
+        nightPlane.setAttribute('animation__move', 'autoplay', playing);
       }
 
       function resetPlanePosition() {
-        plane.setAttribute('position', PLANE_ORIGIN);
+        nightPlane.setAttribute('position', NIGHT_PLANE_ORIGIN);
       }
 
-      // Squash-and-stretch scale pulse on the cylinder: X/Z expand while Y
-      // compresses (classic animation principle), alternating on a tight loop.
-      // Resets to uniform 1 1 1 scale when stopped.
       function setCylinderPulse(pulsing) {
         if (pulsing) {
-          cylinder.setAttribute('animation__pulse',
+          nightCylinder.setAttribute('animation__pulse',
             'property: scale; from: 1 1 1; to: 1.5 0.6 1.5; dir: alternate; loop: true; dur: 600; easing: easeInOutSine');
         } else {
-          cylinder.removeAttribute('animation__pulse');
-          cylinder.setAttribute('scale', CYLINDER_SCALE);
+          nightCylinder.removeAttribute('animation__pulse');
+          nightCylinder.setAttribute('scale', CYLINDER_SCALE);
         }
       }
 
-      // Spin the box counter-clockwise (negative Y) on a continuous loop,
-      // or stop and snap back to its original 45° resting rotation.
       function setBoxSpin(spinning) {
         if (spinning) {
-          box.setAttribute('animation__spin',
-            'property: rotation; from: 0 45 0; to: 0 -315 0; loop: true; dur: 4000; easing: linear');
+          nightBox.setAttribute('animation__spin',
+            'property: rotation; from: 0 -45 0; to: 0 315 0; loop: true; dur: 4000; easing: linear');
         } else {
-          box.removeAttribute('animation__spin');
-          box.setAttribute('rotation', BOX_ROTATION);
+          nightBox.removeAttribute('animation__spin');
+          nightBox.setAttribute('rotation', NIGHT_BOX_ROTATION);
         }
       }
 
-      // Tween the sphere toward its celestial position or back to origin.
-      // Removing the opposing animation before adding the new one lets the
-      // tween start from wherever the sphere currently is, so interruptions
-      // always feel smooth rather than jumping.
       function setSpherePosition(rising) {
         if (rising) {
-          sphere.removeAttribute('animation__fall');
-          sphere.setAttribute('animation__rise',
-            'property: position; to: ' + SPHERE_TARGET + '; dur: 2000; easing: easeInOutQuad');
+          nightSphere.removeAttribute('animation__fall');
+          nightSphere.setAttribute('animation__rise',
+            'property: position; to: ' + NIGHT_SPHERE_TARGET + '; dur: 2000; easing: easeInOutQuad');
         } else {
-          sphere.removeAttribute('animation__rise');
-          sphere.setAttribute('animation__fall',
-            'property: position; to: ' + SPHERE_ORIGIN + '; dur: 2000; easing: easeInOutQuad');
+          nightSphere.removeAttribute('animation__rise');
+          nightSphere.setAttribute('animation__fall',
+            'property: position; to: ' + NIGHT_SPHERE_ORIGIN + '; dur: 2000; easing: easeInOutQuad');
         }
       }
 
@@ -186,24 +186,29 @@
         e.preventDefault();
         isNightMode = !isNightMode;
 
-        // Toggle sky
         sky.setAttribute('color', isNightMode ? '#000000' : '#ECECEC');
-
-        // Toggle glow on each primitive via A-Frame material emissive
-        primitives.forEach(function (p) {
-          if (isNightMode) {
-            p.el.setAttribute('material', 'emissive', p.glowColor);
-            p.el.setAttribute('material', 'emissiveIntensity', 0.75);
-          } else {
-            p.el.setAttribute('material', 'emissiveIntensity', 0);
-          }
-        });
-
-        // Toggle CSS night-mode class for the 2D buttons
         document.body.classList.toggle('night-mode', isNightMode);
 
+        // Rotate the camera rig 180° to face the night environment, or back.
+        // Using explicit from/to keeps the direction consistent on every toggle.
+        cameraRig.removeAttribute('animation__turn');
+        cameraRig.setAttribute('animation__turn',
+          'property: rotation; ' +
+          'from: 0 ' + (isNightMode ? 0 : 180) + ' 0; ' +
+          'to: 0 '   + (isNightMode ? 180 : 0) + ' 0; ' +
+          'dur: 1500; easing: easeInOutCubic');
+
         if (isNightMode) {
-          // Entering night mode: start animations and audio automatically
+          // Hide day environment, reveal night environment
+          dayEls.forEach(function (el) { el.setAttribute('visible', false); });
+          nightPrimitives.forEach(function (p) {
+            p.el.setAttribute('visible', true);
+            p.el.setAttribute('material', 'emissive', p.glowColor);
+            p.el.setAttribute('material', 'emissiveIntensity', 0.75);
+          });
+          nightImagePlane.setAttribute('visible', true);
+          nightImagePlaneTrigger.setAttribute('visible', true);
+
           setPlaneAnimation(true);
           setSpherePosition(true);
           setBoxSpin(true);
@@ -211,7 +216,15 @@
           setAudio(true);
           startImageTrigger();
         } else {
-          // Leaving night mode: stop everything and reset to origin
+          // Reveal day environment, hide night environment
+          dayEls.forEach(function (el) { el.setAttribute('visible', true); });
+          nightPrimitives.forEach(function (p) {
+            p.el.setAttribute('visible', false);
+            p.el.setAttribute('material', 'emissiveIntensity', 0);
+          });
+          nightImagePlane.setAttribute('visible', false);
+          nightImagePlaneTrigger.setAttribute('visible', false);
+
           setPlaneAnimation(false);
           resetPlanePosition();
           setSpherePosition(false);
@@ -220,8 +233,10 @@
           setAudio(false);
           bgAudio.currentTime = 0;
           stopImageTrigger();
-          cameraEl.removeAttribute('animation__zoom');
-          cameraEl.setAttribute('position', '0 1.6 0');
+
+          // Reset rig position in case the zoom was used
+          cameraRig.removeAttribute('animation__zoom');
+          cameraRig.setAttribute('position', '0 1.6 0');
         }
       });
 
@@ -233,23 +248,19 @@
       });
 
       // ── Rainbow easter egg button ─────────────────────────────────────────────
-      // Eases the camera from its current position into the image-plane, then
-      // opens the easter egg URL once the animationcomplete event fires.
+      // Zooms the camera rig toward the night image plane (+Z), then opens the URL.
       rainbowBtn.addEventListener('click', function (e) {
         e.preventDefault();
+        cameraRig.removeAttribute('animation__zoom');
 
-        // Remove any in-progress zoom so a repeat click restarts cleanly
-        cameraEl.removeAttribute('animation__zoom');
-
-        // One-shot listener: fires exactly once when the zoom finishes
         function onZoomComplete() {
-          cameraEl.removeEventListener('animationcomplete__zoom', onZoomComplete);
+          cameraRig.removeEventListener('animationcomplete__zoom', onZoomComplete);
           window.open(EASTER_EGG_URL, '_blank');
         }
-        cameraEl.addEventListener('animationcomplete__zoom', onZoomComplete);
+        cameraRig.addEventListener('animationcomplete__zoom', onZoomComplete);
 
-        cameraEl.setAttribute('animation__zoom',
-          'property: position; to: 0 1.25 -6; dur: 2500; easing: easeInOutCubic');
+        cameraRig.setAttribute('animation__zoom',
+          'property: position; to: 0 1.25 6; dur: 2500; easing: easeInOutCubic');
       });
     </script>
   </body>
