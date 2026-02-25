@@ -32,6 +32,14 @@
       <a-sphere   id="night-bounce-sphere" position="2.5 6 3" radius="0.4" color="#F58A07" visible="false"
                   animation__bounce="property: position; from: 2.5 6 3; to: 2.5 1.5 3; dur: 1800; easing: easeOutElastic; loop: true; autoplay: false"></a-sphere>
 
+      <!-- Orbit rig: invisible parent entity positioned at nightSphere's center.
+           Y-rotation carries the child sphere in a continuous circle.
+           The child's X offset is the orbit radius (2 units from center). -->
+      <a-entity id="orbit-rig" position="0 1.25 5" visible="false"
+                animation__orbit="property: rotation; from: 0 0 0; to: 0 0 360; loop: true; dur: 4000; easing: linear">
+        <a-sphere id="orbit-sphere" position="0 2 0" radius="0.42" color="#44FFD1"></a-sphere>
+      </a-entity>
+
       <!-- rotation="0 180 0" flips the plane normal to face -Z, toward the night camera -->
       <a-plane    id="night-image-plane"         src="#display-img" position="0 1.25 6"   rotation="0 180 0" width="5" height="5" visible="false"></a-plane>
       <a-plane    id="night-image-plane-trigger" src="#rainbow-img"  position="0 1.25 5.9" rotation="0 180 0" width="5" height="5"
@@ -88,6 +96,8 @@
       const nightPlane             = document.querySelector('#night-plane');
       const nightImagePlane        = document.querySelector('#night-image-plane');
       const nightImagePlaneTrigger = document.querySelector('#night-image-plane-trigger');
+      const orbitRig               = document.querySelector('#orbit-rig');
+      const orbitSphere            = document.querySelector('#orbit-sphere');
 
       // Night primitives that receive emissive glow + visibility toggling.
       // scalesIn: true  → entrance/exit handled by setNightObjectScale()
@@ -341,6 +351,9 @@
           });
           nightImagePlane.setAttribute('visible', true);
           nightImagePlaneTrigger.setAttribute('visible', true);
+          orbitRig.setAttribute('visible', true);
+          orbitSphere.setAttribute('material', 'emissive', '#44FFD1');
+          orbitSphere.setAttribute('material', 'emissiveIntensity', 0.75);
 
           setBounceAnimation(true);
           setPlaneAnimation(true);
@@ -363,6 +376,8 @@
           });
           nightImagePlane.setAttribute('visible', false);
           nightImagePlaneTrigger.setAttribute('visible', false);
+          orbitRig.setAttribute('visible', false);
+          orbitSphere.setAttribute('material', 'emissiveIntensity', 0);
 
           setBounceAnimation(false);
           setPlaneAnimation(false);
