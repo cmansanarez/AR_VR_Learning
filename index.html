@@ -28,6 +28,10 @@
       <a-cylinder id="night-cylinder" position="-1 0.75 3" radius="0.5" height="1.5" color="#ffec00" visible="false"></a-cylinder>
       <a-plane    id="night-plane"    position="0 0 4"     rotation="-90 0 0" width="4" height="4" color="#bcf804" visible="false"
                   animation__move="property: position; from: -8 0 4; to: 8 0 4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeInOutSine"></a-plane>
+      <!-- Bounce sphere: drops from above with easeOutBounce each cycle in night mode -->
+      <a-sphere   id="night-bounce-sphere" position="2.5 6 3" radius="0.4" color="#F58A07" visible="false"
+                  animation__bounce="property: position; from: 2.5 6 3; to: 2.5 1.5 3; dur: 1800; easing: easeOutElastic; loop: true; autoplay: false"></a-sphere>
+
       <!-- rotation="0 180 0" flips the plane normal to face -Z, toward the night camera -->
       <a-plane    id="night-image-plane"         src="#display-img" position="0 1.25 6"   rotation="0 180 0" width="5" height="5" visible="false"></a-plane>
       <a-plane    id="night-image-plane-trigger" src="#rainbow-img"  position="0 1.25 5.9" rotation="0 180 0" width="5" height="5"
@@ -77,6 +81,7 @@
       ];
 
       // Night environment elements
+      const nightBounceSphere      = document.querySelector('#night-bounce-sphere');
       const nightBox               = document.querySelector('#night-box');
       const nightSphere            = document.querySelector('#night-sphere');
       const nightCylinder          = document.querySelector('#night-cylinder');
@@ -88,10 +93,11 @@
       // scalesIn: true  → entrance/exit handled by setNightObjectScale()
       // scalesIn: false → visibility toggled directly
       const nightPrimitives = [
-        { el: nightBox,      glowColor: '#304ffe', scalesIn: true  },
-        { el: nightSphere,   glowColor: '#ff1d89', scalesIn: true  },
-        { el: nightCylinder, glowColor: '#ffec00', scalesIn: false },
-        { el: nightPlane,    glowColor: '#bcf804', scalesIn: false },
+        { el: nightBox,          glowColor: '#304ffe', scalesIn: true  },
+        { el: nightSphere,       glowColor: '#ff1d89', scalesIn: true  },
+        { el: nightCylinder,     glowColor: '#ffec00', scalesIn: false },
+        { el: nightPlane,        glowColor: '#bcf804', scalesIn: false },
+        { el: nightBounceSphere, glowColor: '#F58A07', scalesIn: false },
       ];
 
       const bgAudio = document.querySelector('#bg-audio');
@@ -112,6 +118,12 @@
       const NIGHT_SPHERE_TARGET = '0 4 5';
       const NIGHT_BOX_ROTATION  = '0 -45 0';
       const CYLINDER_SCALE      = '1 1 1';
+
+      // Bounce sphere drop: starts high (y=6), elastic landing target at y=1.5.
+      // easeOutElastic overshoots ~40% of travel distance — landing at y=0.4 would
+      // clip through the floor, so y=1.5 keeps the oscillation above ground.
+      const BOUNCE_START = '2.5 6 3';
+      const BOUNCE_LAND  = '2.5 1.5 3';
 
       // Scale an object in (show=true) or out (show=false).
       // Scale-in: makes the object visible, resets its scale to 0, then tweens to 1
@@ -141,6 +153,20 @@
             }
           }
           el.addEventListener('animationcomplete__scale', onScaleOut);
+        }
+      }
+
+      // Drop the bounce sphere from BOUNCE_START to BOUNCE_LAND with easeOutBounce.
+      // The animation is declared inline in HTML (autoplay: false) so it is fully
+      // initialized at load time — toggling autoplay follows the same pattern as the
+      // night-plane and avoids dynamic component initialization race conditions.
+      function setBounceAnimation(active) {
+        if (active) {
+          nightBounceSphere.setAttribute('position', BOUNCE_START);
+          nightBounceSphere.setAttribute('animation__bounce', 'autoplay', true);
+        } else {
+          nightBounceSphere.setAttribute('animation__bounce', 'autoplay', false);
+          nightBounceSphere.setAttribute('position', BOUNCE_START);
         }
       }
 
@@ -316,6 +342,7 @@
           nightImagePlane.setAttribute('visible', true);
           nightImagePlaneTrigger.setAttribute('visible', true);
 
+          setBounceAnimation(true);
           setPlaneAnimation(true);
           setNightPlaneScalePulse(true);
           setSpherePosition(true);
@@ -337,6 +364,7 @@
           nightImagePlane.setAttribute('visible', false);
           nightImagePlaneTrigger.setAttribute('visible', false);
 
+          setBounceAnimation(false);
           setPlaneAnimation(false);
           setNightPlaneScalePulse(false);
           resetPlanePosition();
