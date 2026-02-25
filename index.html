@@ -6,7 +6,7 @@
     <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
   </head>
   <body>
-    <a-scene>
+    <a-scene renderer="alpha: true">
       <a-assets>
         <img   id="display-img" src="ARVR_Learning_Background.png">
         <img   id="rainbow-img" src="rainbow.png">
@@ -51,10 +51,18 @@
     <!-- Rainbow easter egg button: night-mode only, below mute button -->
     <a id="rainbowBtn" href="#" title="✨ Easter Egg">🌈</a>
 
+    <!-- AR camera button: always visible, activates live camera feed -->
+    <a id="arBtn" href="#" title="Toggle AR Camera">📷</a>
+
+    <!-- Live camera feed rendered behind the A-Frame canvas in AR mode -->
+    <video id="ar-video" autoplay playsinline muted></video>
+
     <script>
       const btn        = document.querySelector('#myEnterARButton');
       const muteBtn    = document.querySelector('#muteBtn');
       const rainbowBtn = document.querySelector('#rainbowBtn');
+      const arBtn      = document.querySelector('#arBtn');
+      const arVideo    = document.querySelector('#ar-video');
       const cameraRig  = document.querySelector('#camera-rig');
       const sky        = document.querySelector('#sky');
 
@@ -89,10 +97,12 @@
       const bgAudio = document.querySelector('#bg-audio');
 
       let isNightMode    = false;
+      let isARMode       = false;
       let isMuted        = false;
       let isImageVisible = false;
       let triggerTimeout  = null;
       let triggerInterval = null;
+      let arStream        = null;
 
       const EASTER_EGG_URL = 'rainbow.html';
 
@@ -230,12 +240,56 @@
         }
       }
 
+      // Single source of truth for sky visibility.
+      // AR mode hides the sky entirely so the camera feed shows through the
+      // transparent canvas. Day/night only changes the sky color; it stays
+      // hidden in AR regardless of which mode is active.
+      function updateSky() {
+        if (isARMode) {
+          sky.setAttribute('visible', false);
+        } else {
+          sky.setAttribute('visible', true);
+          sky.setAttribute('color', isNightMode ? '#000000' : '#ECECEC');
+        }
+      }
+
+      // Request the rear camera, pipe it into the background video element,
+      // and hide the sky so the transparent canvas reveals the feed.
+      // On deactivation, kill the stream tracks and restore the sky.
+      async function setARMode(active) {
+        if (active) {
+          try {
+            arStream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: 'environment' }
+            });
+            arVideo.srcObject = arStream;
+            isARMode = true;
+            arBtn.textContent = '🔴';
+            document.body.classList.add('ar-mode');
+          } catch (err) {
+            // Permission denied or no camera available — fail silently
+            isARMode = false;
+            return;
+          }
+        } else {
+          if (arStream) {
+            arStream.getTracks().forEach(function (t) { t.stop(); });
+            arStream = null;
+          }
+          arVideo.srcObject = null;
+          isARMode = false;
+          arBtn.textContent = '📷';
+          document.body.classList.remove('ar-mode');
+        }
+        updateSky();
+      }
+
       // ── Night mode toggle ──────────────────────────────────────────────────────
       btn.addEventListener('click', function (e) {
         e.preventDefault();
         isNightMode = !isNightMode;
 
-        sky.setAttribute('color', isNightMode ? '#000000' : '#ECECEC');
+        updateSky();
         document.body.classList.toggle('night-mode', isNightMode);
 
         // Rotate the camera rig 180° to face the night environment, or back.
@@ -304,6 +358,12 @@
         e.preventDefault();
         isMuted = !isMuted;
         setMute(isMuted);
+      });
+
+      // ── AR camera button ──────────────────────────────────────────────────────
+      arBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setARMode(!isARMode);
       });
 
       // ── Rainbow easter egg button ─────────────────────────────────────────────
