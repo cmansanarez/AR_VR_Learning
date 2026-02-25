@@ -27,7 +27,7 @@
       <a-sphere   id="night-sphere"   position="0 1.25 5"  radius="1.25"      color="#ff1d89" visible="false"></a-sphere>
       <a-cylinder id="night-cylinder" position="-1 0.75 3" radius="0.5" height="1.5" color="#ffec00" visible="false"></a-cylinder>
       <a-plane    id="night-plane"    position="0 0 4"     rotation="-90 0 0" width="4" height="4" color="#bcf804" visible="false"
-                  animation__move="property: position; from: -8 0 4; to: 8 0 4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeInOutSine"></a-plane>
+                  animation__move="property: position; from: -8 0 4; to: 8 0 4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeOutQuart"></a-plane>
       <!-- Bounce sphere: drops from above with easeOutBounce each cycle in night mode -->
       <a-sphere   id="night-bounce-sphere" position="2.5 6 3" radius="0.4" color="#F58A07" visible="false"
                   animation__bounce="property: position; from: 2.5 6 3; to: 2.5 1.5 3; dur: 1800; easing: easeOutElastic; loop: true; autoplay: false"></a-sphere>
