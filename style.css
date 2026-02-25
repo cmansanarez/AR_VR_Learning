@@ -170,9 +170,17 @@ body.ar-mode #arBtn {
   z-index: -1;   /* behind the A-Frame canvas */
   display: block;
   visibility: hidden;   /* hidden until AR mode is active */
+  filter: none;
+  transition: filter 0.8s ease;
 }
 
 body.ar-mode #ar-video {
   visibility: visible;
+}
+
+/* Night AR: desaturate and dim the camera feed so the emissive
+   primitives pop against a grey, darkened real world. */
+body.ar-mode.night-mode #ar-video {
+  filter: grayscale(1) brightness(0.8);
 }
 
