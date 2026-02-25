@@ -38,7 +38,7 @@
       <!-- Camera rig: holds world position and Y-rotation for environment switching.
            The inner camera handles look-controls and zoom movement independently. -->
       <a-entity id="camera-rig" position="0 1.6 0">
-        <a-camera id="camera"></a-camera>
+        <a-camera id="camera" camera="userHeight: 0"></a-camera>
       </a-entity>
     </a-scene>
 
@@ -114,11 +114,15 @@
         if (show) {
           el.setAttribute('visible', true);
           el.setAttribute('scale', '0 0 0');
+          // Loop alternates 0→1→0→1 continuously so the effect is always
+          // visible regardless of when the camera rig finishes rotating.
           el.setAttribute('animation__scale',
-            'property: scale; from: 0 0 0; to: 1 1 1; dur: 600; easing: easeOutBack');
+            'property: scale; from: 0 0 0; to: 1 1 1; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine');
         } else {
+          // No `from` — A-Frame reads the current scale at interrupt time,
+          // so the shrink starts from wherever the loop left off.
           el.setAttribute('animation__scale',
-            'property: scale; from: 1 1 1; to: 0 0 0; dur: 400; easing: easeInCubic');
+            'property: scale; to: 0 0 0; dur: 400; easing: easeInCubic');
           function onScaleOut() {
             el.removeEventListener('animationcomplete__scale', onScaleOut);
             if (!isNightMode) {
@@ -177,6 +181,21 @@
 
       function resetPlanePosition() {
         nightPlane.setAttribute('position', NIGHT_PLANE_ORIGIN);
+      }
+
+      // Scale both night planes between 1×1×1 and 2×2×2 on a continuous loop.
+      // Uses a separate animation slot (animation__scalepulse) so it doesn't
+      // conflict with the position slide already running on nightPlane.
+      function setNightPlaneScalePulse(active) {
+        [nightPlane, nightImagePlane].forEach(function (el) {
+          if (active) {
+            el.setAttribute('animation__scalepulse',
+              'property: scale; from: 1 1 1; to: 2 2 2; dir: alternate; loop: true; dur: 2000; easing: easeInOutSine');
+          } else {
+            el.removeAttribute('animation__scalepulse');
+            el.setAttribute('scale', '1 1 1');
+          }
+        });
       }
 
       function setCylinderPulse(pulsing) {
@@ -244,6 +263,7 @@
           nightImagePlaneTrigger.setAttribute('visible', true);
 
           setPlaneAnimation(true);
+          setNightPlaneScalePulse(true);
           setSpherePosition(true);
           setBoxSpin(true);
           setCylinderPulse(true);
@@ -264,6 +284,7 @@
           nightImagePlaneTrigger.setAttribute('visible', false);
 
           setPlaneAnimation(false);
+          setNightPlaneScalePulse(false);
           resetPlanePosition();
           setSpherePosition(false);
           setBoxSpin(false);
