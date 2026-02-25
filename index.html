@@ -23,13 +23,14 @@
                   material="transparent: true; opacity: 0"></a-plane>
 
       <!-- ── Night environment (camera faces +Z after 180° rig rotation) ─── -->
-      <a-box      id="night-box"      position="1 0.5 3"   rotation="0 -45 0" color="#7c4dff" visible="false"></a-box>
-      <a-sphere   id="night-sphere"   position="0 1.25 5"  radius="1.25"      color="#00e5ff" visible="false"></a-sphere>
-      <a-cylinder id="night-cylinder" position="-1 0.75 3" radius="0.5" height="1.5" color="#ff6d00" visible="false"></a-cylinder>
-      <a-plane    id="night-plane"    position="0 0 4"     rotation="-90 0 0" width="4" height="4" color="#1a237e" visible="false"
+      <a-box      id="night-box"      position="1 0.5 3"   rotation="0 -45 0" color="#304ffe" visible="false"></a-box>
+      <a-sphere   id="night-sphere"   position="0 1.25 5"  radius="1.25"      color="#ff1d89" visible="false"></a-sphere>
+      <a-cylinder id="night-cylinder" position="-1 0.75 3" radius="0.5" height="1.5" color="#ffec00" visible="false"></a-cylinder>
+      <a-plane    id="night-plane"    position="0 0 4"     rotation="-90 0 0" width="4" height="4" color="#bcf804" visible="false"
                   animation__move="property: position; from: -8 0 4; to: 8 0 4; dir: alternate; dur: 4000; loop: true; autoplay: false; easing: easeInOutSine"></a-plane>
-      <a-plane    id="night-image-plane"         src="#display-img" position="0 1.25 6"   width="5" height="5" visible="false"></a-plane>
-      <a-plane    id="night-image-plane-trigger" src="#rainbow-img"  position="0 1.25 5.9" width="5" height="5"
+      <!-- rotation="0 180 0" flips the plane normal to face -Z, toward the night camera -->
+      <a-plane    id="night-image-plane"         src="#display-img" position="0 1.25 6"   rotation="0 180 0" width="5" height="5" visible="false"></a-plane>
+      <a-plane    id="night-image-plane-trigger" src="#rainbow-img"  position="0 1.25 5.9" rotation="0 180 0" width="5" height="5"
                   material="transparent: true; opacity: 0" visible="false"></a-plane>
 
       <a-sky id="sky" color="#ECECEC"></a-sky>
@@ -79,10 +80,10 @@
       // scalesIn: true  → entrance/exit handled by setNightObjectScale()
       // scalesIn: false → visibility toggled directly
       const nightPrimitives = [
-        { el: nightBox,      glowColor: '#7c4dff', scalesIn: true  },
-        { el: nightSphere,   glowColor: '#00e5ff', scalesIn: true  },
-        { el: nightCylinder, glowColor: '#ff6d00', scalesIn: false },
-        { el: nightPlane,    glowColor: '#1a237e', scalesIn: false },
+        { el: nightBox,      glowColor: '#304ffe', scalesIn: true  },
+        { el: nightSphere,   glowColor: '#ff1d89', scalesIn: true  },
+        { el: nightCylinder, glowColor: '#ffec00', scalesIn: false },
+        { el: nightPlane,    glowColor: '#bcf804', scalesIn: false },
       ];
 
       const bgAudio = document.querySelector('#bg-audio');
