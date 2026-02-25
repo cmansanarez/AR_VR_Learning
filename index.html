@@ -75,12 +75,14 @@
       const nightImagePlane        = document.querySelector('#night-image-plane');
       const nightImagePlaneTrigger = document.querySelector('#night-image-plane-trigger');
 
-      // Night primitives that receive emissive glow + visibility toggling
+      // Night primitives that receive emissive glow + visibility toggling.
+      // scalesIn: true  → entrance/exit handled by setNightObjectScale()
+      // scalesIn: false → visibility toggled directly
       const nightPrimitives = [
-        { el: nightBox,      glowColor: '#7c4dff' },
-        { el: nightSphere,   glowColor: '#00e5ff' },
-        { el: nightCylinder, glowColor: '#ff6d00' },
-        { el: nightPlane,    glowColor: '#1a237e' },
+        { el: nightBox,      glowColor: '#7c4dff', scalesIn: true  },
+        { el: nightSphere,   glowColor: '#00e5ff', scalesIn: true  },
+        { el: nightCylinder, glowColor: '#ff6d00', scalesIn: false },
+        { el: nightPlane,    glowColor: '#1a237e', scalesIn: false },
       ];
 
       const bgAudio = document.querySelector('#bg-audio');
@@ -99,6 +101,33 @@
       const NIGHT_SPHERE_TARGET = '0 4 5';
       const NIGHT_BOX_ROTATION  = '0 -45 0';
       const CYLINDER_SCALE      = '1 1 1';
+
+      // Scale an object in (show=true) or out (show=false).
+      // Scale-in: makes the object visible, resets its scale to 0, then tweens to 1
+      //   using easeOutBack — the slight overshoot gives a satisfying "pop" on arrival.
+      // Scale-out: tweens scale to 0 using easeInCubic (accelerates into nothing),
+      //   then hides the object only after the tween completes. The isNightMode guard
+      //   prevents hiding if the user toggles back before the animation finishes.
+      function setNightObjectScale(el, show) {
+        el.removeAttribute('animation__scale');
+        if (show) {
+          el.setAttribute('visible', true);
+          el.setAttribute('scale', '0 0 0');
+          el.setAttribute('animation__scale',
+            'property: scale; from: 0 0 0; to: 1 1 1; dur: 600; easing: easeOutBack');
+        } else {
+          el.setAttribute('animation__scale',
+            'property: scale; from: 1 1 1; to: 0 0 0; dur: 400; easing: easeInCubic');
+          function onScaleOut() {
+            el.removeEventListener('animationcomplete__scale', onScaleOut);
+            if (!isNightMode) {
+              el.setAttribute('visible', false);
+              el.setAttribute('scale', '1 1 1');
+            }
+          }
+          el.addEventListener('animationcomplete__scale', onScaleOut);
+        }
+      }
 
       // Fade the night trigger overlay in or out.
       function setImageTriggerFade(show) {
@@ -202,7 +231,11 @@
           // Hide day environment, reveal night environment
           dayEls.forEach(function (el) { el.setAttribute('visible', false); });
           nightPrimitives.forEach(function (p) {
-            p.el.setAttribute('visible', true);
+            if (p.scalesIn) {
+              setNightObjectScale(p.el, true);
+            } else {
+              p.el.setAttribute('visible', true);
+            }
             p.el.setAttribute('material', 'emissive', p.glowColor);
             p.el.setAttribute('material', 'emissiveIntensity', 0.75);
           });
@@ -219,7 +252,11 @@
           // Reveal day environment, hide night environment
           dayEls.forEach(function (el) { el.setAttribute('visible', true); });
           nightPrimitives.forEach(function (p) {
-            p.el.setAttribute('visible', false);
+            if (p.scalesIn) {
+              setNightObjectScale(p.el, false);
+            } else {
+              p.el.setAttribute('visible', false);
+            }
             p.el.setAttribute('material', 'emissiveIntensity', 0);
           });
           nightImagePlane.setAttribute('visible', false);
