@@ -69,6 +69,9 @@
     <!-- Live camera feed rendered behind the A-Frame canvas in AR mode -->
     <video id="ar-video" autoplay playsinline muted></video>
 
+    <!-- AR error toast: shown briefly when camera fails to initialize -->
+    <div id="ar-error"></div>
+
     <script>
       const btn        = document.querySelector('#myEnterARButton');
       const muteBtn    = document.querySelector('#muteBtn');
@@ -289,24 +292,53 @@
         }
       }
 
+      // Show a brief error toast for AR failures.
+      const arError = document.querySelector('#ar-error');
+      function showARError(msg) {
+        arError.textContent = msg;
+        arError.style.display = 'block';
+        clearTimeout(showARError._t);
+        showARError._t = setTimeout(function () { arError.style.display = 'none'; }, 6000);
+      }
+
       // Request the rear camera, pipe it into the background video element,
       // and hide the sky so the transparent canvas reveals the feed.
       // On deactivation, kill the stream tracks and restore the sky.
       async function setARMode(active) {
         if (active) {
+          // getUserMedia is only available in a secure context (HTTPS or localhost).
+          if (!window.isSecureContext) {
+            showARError('Camera requires HTTPS. Serve this page over a secure connection.');
+            console.error('[AR] Page is not in a secure context — getUserMedia unavailable.');
+            return;
+          }
+          if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            showARError('Camera API not supported in this browser.');
+            console.error('[AR] navigator.mediaDevices.getUserMedia is not available.');
+            return;
+          }
           try {
+            // First attempt: request rear-facing camera explicitly.
             arStream = await navigator.mediaDevices.getUserMedia({
               video: { facingMode: 'environment' }
             });
-            arVideo.srcObject = arStream;
-            isARMode = true;
-            arBtn.textContent = '🔴';
-            document.body.classList.add('ar-mode');
           } catch (err) {
-            // Permission denied or no camera available — fail silently
-            isARMode = false;
-            return;
+            // On iOS Chrome, facingMode: 'environment' can fail even when a camera
+            // is available. Fall back to any camera before giving up.
+            console.warn('[AR] facingMode:environment failed, trying plain video:', err);
+            try {
+              arStream = await navigator.mediaDevices.getUserMedia({ video: true });
+            } catch (err2) {
+              console.error('[AR] Camera access failed:', err2);
+              showARError('Camera access denied. Check browser permissions and try again.');
+              isARMode = false;
+              return;
+            }
           }
+          arVideo.srcObject = arStream;
+          isARMode = true;
+          arBtn.textContent = '🔴';
+          document.body.classList.add('ar-mode');
         } else {
           if (arStream) {
             arStream.getTracks().forEach(function (t) { t.stop(); });
