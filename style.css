@@ -222,6 +222,80 @@ body.ar-mode.night-mode #ar-video {
   filter: grayscale(1) brightness(0.8);
 }
 
+/* ─── Marker AR button ───────────────────────────────────────────────────────── */
+
+#markerBtn {
+  position: fixed;
+  top: 360px;  /* 292px galleryBtn + 56px + 12px gap */
+  right: 20px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: rgba(255, 255, 255, 0.88);
+  border: 2px solid rgba(0, 0, 0, 0.12);
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  text-decoration: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  transition: transform 0.1s ease, box-shadow 0.1s ease, background-color 0.3s ease;
+  user-select: none;
+  line-height: 1;
+}
+
+#markerBtn:hover {
+  transform: scale(1.08);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+}
+
+#markerBtn:active {
+  transform: scale(0.93);
+}
+
+body.night-mode #markerBtn {
+  background-color: rgba(30, 30, 30, 0.88);
+  border-color: rgba(255, 255, 255, 0.18);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.6);
+}
+
+/* ─── Page transition overlay ────────────────────────────────────────────────── */
+
+#page-transition {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 99999;
+  transition: opacity 0.5s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 12px;
+  color: #fff;
+  font-family: sans-serif;
+}
+
+#page-transition.fade-out {
+  opacity: 1;
+  pointer-events: all;
+}
+
+#page-transition span {
+  font-size: 32px;
+}
+
+#page-transition p {
+  font-size: 14px;
+  opacity: 0.7;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 /* ─── AR error toast ─────────────────────────────────────────────────────────── */
 
 #ar-error {

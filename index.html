@@ -95,6 +95,12 @@
     <!-- Gallery button: rotates rig 90° to reveal the canvas-texture scene -->
     <a id="galleryBtn" href="#" title="Toggle Gallery">🖼️</a>
 
+    <!-- Marker AR button: transitions to the AR.js marker experience -->
+    <a id="markerBtn" href="#" title="AR Marker">🎯</a>
+
+    <!-- Page transition overlay: fades to black between index and ar-marker -->
+    <div id="page-transition"><span>🎯</span><p>AR Marker</p></div>
+
     <!-- Live camera feed rendered behind the A-Frame canvas in AR mode -->
     <video id="ar-video" autoplay playsinline muted></video>
 
@@ -591,6 +597,19 @@
       arBtn.addEventListener('click', function (e) {
         e.preventDefault();
         setARMode(!isARMode);
+      });
+
+      // ── Marker AR button ──────────────────────────────────────────────────────
+      // Fades the page to black then navigates to ar-marker.html.
+      const markerNavBtn    = document.querySelector('#markerBtn');
+      const pageTransition  = document.querySelector('#page-transition');
+
+      markerNavBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        pageTransition.classList.add('fade-out');
+        setTimeout(function () {
+          window.location.href = 'ar-marker.html';
+        }, 550);
       });
 
       // ── Rainbow easter egg button ─────────────────────────────────────────────
