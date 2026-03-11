@@ -4,9 +4,10 @@
     <title>AR/VR Learning</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+    <script src="https://unpkg.com/hydra-synth@1.4.0/dist/hydra-synth.js"></script>
   </head>
   <body>
-    <a-scene renderer="alpha: true">
+    <a-scene renderer="alpha: true" shadow="type: pcf">
       <a-assets>
         <img   id="display-img" src="ARVR_Learning_Background.png">
         <img   id="rainbow-img" src="rainbow.png">
@@ -14,10 +15,10 @@
       </a-assets>
 
       <!-- ── Day environment (camera faces -Z) ────────────────────────────── -->
-      <a-box      id="box"      position="-1 0.5 -3"  rotation="0 45 0"  color="#304ffe"></a-box>
-      <a-sphere   id="sphere"   position="0 1.25 -5"  radius="1.25"      color="#ff1d89"></a-sphere>
-      <a-cylinder id="cylinder" position="1 0.75 -3"  radius="0.5" height="1.5" color="#ffec00"></a-cylinder>
-      <a-plane    id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#bcf804"></a-plane>
+      <a-box      id="box"      position="-1 0.5 -3"  rotation="0 45 0"  color="#304ffe" shadow="cast: true; receive: true"></a-box>
+      <a-sphere   id="sphere"   position="0 1.25 -5"  radius="1.25"      color="#ff1d89" shadow="cast: true; receive: true"></a-sphere>
+      <a-cylinder id="cylinder" position="1 0.75 -3"  radius="0.5" height="1.5" color="#ffec00" shadow="cast: true; receive: true"></a-cylinder>
+      <a-plane    id="plane"    position="0 0 -4"     rotation="-90 0 0" width="4" height="4" color="#bcf804" shadow="receive: true"></a-plane>
       <a-plane    id="image-plane"         src="#display-img" position="0 1.25 -6"   width="5" height="5"></a-plane>
       <a-plane    id="image-plane-trigger" src="#rainbow-img"  position="0 1.25 -5.9" width="5" height="5"
                   material="transparent: true; opacity: 0"></a-plane>
@@ -45,6 +46,31 @@
       <a-plane    id="night-image-plane-trigger" src="#rainbow-img"  position="0 1.25 5.9" rotation="0 180 0" width="5" height="5"
                   material="transparent: true; opacity: 0" visible="false"></a-plane>
 
+      <!-- ── Gallery environment (camera faces +X, rig at 90°) ───────────── -->
+      <!-- Floor: horizontal plane, lies flat in the gallery space -->
+      <a-plane id="gallery-floor" position="6 0 0"  rotation="-90 0 0" width="8" height="8" color="#ffffff" visible="false"></a-plane>
+      <!-- Wall: vertical plane at the far end, rotation="0 -90 0" makes its
+           normal face -X so it faces the incoming camera -->
+      <a-plane id="gallery-wall"  position="9 2 0"  rotation="0 -90 0" width="6" height="4" color="#ffffff" visible="false"></a-plane>
+
+      <!-- ── Lighting ──────────────────────────────────────────────────────── -->
+      <!-- Day: warm ambient fills the scene; directional sun sweeps east→west.
+           Adding ANY <a-light> disables A-Frame's built-in defaults, so we
+           replace them explicitly here. -->
+      <a-light id="day-ambient" type="ambient"     color="#fff5e0" intensity="0.6"></a-light>
+      <a-light id="sun"         type="directional" color="#ffe87a" intensity="1.2" castshadow="true"
+               position="-6 8 -2"
+               animation__sweep="property: position; from: -8 8 -2; to: 8 8 -2; dir: alternate; dur: 12000; loop: true; easing: linear"></a-light>
+
+      <!-- Night: deep navy ambient keeps objects from going pitch black;
+           a pink point light near nightSphere pulses with the emissive mood. -->
+      <a-light id="night-ambient" type="ambient" color="#0d1b4b" intensity="0.3" visible="false"></a-light>
+      <a-light id="night-point"   type="point"   color="#8B00FF" intensity="0"   distance="6" position="0 2.5 5" visible="false"></a-light>
+
+      <!-- Gallery: bright neutral ambient + overhead point light on the floor plane -->
+      <a-light id="gallery-ambient" type="ambient" color="#ffffff" intensity="0.9" visible="false"></a-light>
+      <a-light id="gallery-point"   type="point"   color="#ffffff" intensity="1.8" distance="9" position="6 3 0" visible="false"></a-light>
+
       <a-sky id="sky" color="#ECECEC"></a-sky>
 
       <!-- Camera rig: holds world position and Y-rotation for environment switching.
@@ -65,6 +91,9 @@
 
     <!-- AR camera button: always visible, activates live camera feed -->
     <a id="arBtn" href="#" title="Toggle AR Camera">📷</a>
+
+    <!-- Gallery button: rotates rig 90° to reveal the canvas-texture scene -->
+    <a id="galleryBtn" href="#" title="Toggle Gallery">🖼️</a>
 
     <!-- Live camera feed rendered behind the A-Frame canvas in AR mode -->
     <video id="ar-video" autoplay playsinline muted></video>
@@ -101,6 +130,15 @@
       const nightImagePlaneTrigger = document.querySelector('#night-image-plane-trigger');
       const orbitRig               = document.querySelector('#orbit-rig');
       const orbitSphere            = document.querySelector('#orbit-sphere');
+      const galleryFloor           = document.querySelector('#gallery-floor');
+      const galleryWall            = document.querySelector('#gallery-wall');
+      const galleryBtn             = document.querySelector('#galleryBtn');
+      const dayAmbient             = document.querySelector('#day-ambient');
+      const sunLight               = document.querySelector('#sun');
+      const nightAmbient           = document.querySelector('#night-ambient');
+      const nightPoint             = document.querySelector('#night-point');
+      const galleryAmbient         = document.querySelector('#gallery-ambient');
+      const galleryPoint           = document.querySelector('#gallery-point');
 
       // Night primitives that receive emissive glow + visibility toggling.
       // scalesIn: true  → entrance/exit handled by setNightObjectScale()
@@ -117,6 +155,7 @@
 
       let isNightMode    = false;
       let isARMode       = false;
+      let isGalleryMode  = false;
       let isMuted        = false;
       let isImageVisible = false;
       let triggerTimeout  = null;
@@ -279,6 +318,29 @@
         }
       }
 
+      // Toggle day lighting. Pausing the sun sweep when not in day mode avoids
+      // the light continuing to move while invisible, so it resumes predictably.
+      function setDayLighting(active) {
+        dayAmbient.setAttribute('visible', active);
+        sunLight.setAttribute('visible', active);
+        sunLight.setAttribute('animation__sweep', 'autoplay', active);
+      }
+
+      // Toggle night lighting. The point light pulses intensity 0.3→1.8 in sync
+      // with the scene's emissive rhythm. On deactivation intensity is reset to 0
+      // so it doesn't bleed into the day environment on the next toggle.
+      function setNightLighting(active) {
+        nightAmbient.setAttribute('visible', active);
+        nightPoint.setAttribute('visible', active);
+        if (active) {
+          nightPoint.setAttribute('animation__pulse',
+            'property: light.intensity; from: 0.3; to: 1.8; dir: alternate; loop: true; dur: 1500; easing: easeInOutSine');
+        } else {
+          nightPoint.removeAttribute('animation__pulse');
+          nightPoint.setAttribute('light', 'intensity', 0);
+        }
+      }
+
       // Single source of truth for sky visibility.
       // AR mode hides the sky entirely so the camera feed shows through the
       // transparent canvas. Day/night only changes the sky color; it stays
@@ -352,9 +414,95 @@
         updateSky();
       }
 
+      // ── Gallery mode ───────────────────────────────────────────────────────────
+      // Rotates the rig to 90° to reveal the +X gallery scene.
+      // Entering from either day or night is supported; exiting always returns to day.
+      function setGalleryMode(active) {
+        isGalleryMode = active;
+        document.body.classList.toggle('gallery-mode', active);
+
+        if (active) {
+          // Collapse whichever environment is currently showing
+          if (isNightMode) {
+            nightPrimitives.forEach(function (p) {
+              p.el.setAttribute('visible', false);
+              p.el.setAttribute('material', 'emissiveIntensity', 0);
+            });
+            nightImagePlane.setAttribute('visible', false);
+            nightImagePlaneTrigger.setAttribute('visible', false);
+            orbitRig.setAttribute('visible', false);
+            orbitSphere.setAttribute('material', 'emissiveIntensity', 0);
+            setBounceAnimation(false);
+            setPlaneAnimation(false);
+            setNightPlaneScalePulse(false);
+            resetPlanePosition();
+            setSpherePosition(false);
+            setBoxSpin(false);
+            setCylinderPulse(false);
+            setAudio(false);
+            bgAudio.currentTime = 0;
+            stopImageTrigger();
+            setNightLighting(false);
+          } else {
+            dayEls.forEach(function (el) { el.setAttribute('visible', false); });
+          }
+          setDayLighting(false);
+
+          // Rotate rig from current logical position to 90° (+X = gallery)
+          var fromDeg = isNightMode ? 180 : 0;
+          cameraRig.removeAttribute('animation__turn');
+          cameraRig.setAttribute('animation__turn',
+            'property: rotation; from: 0 ' + fromDeg + ' 0; to: 0 90 0; dur: 1500; easing: easeInOutCubic');
+
+          galleryFloor.setAttribute('visible', true);
+          galleryWall.setAttribute('visible', true);
+          galleryAmbient.setAttribute('visible', true);
+          galleryPoint.setAttribute('visible', true);
+
+          // Slide the rig forward and up so both floor and wall are in frame.
+          // Runs in parallel with animation__turn — no sequencing needed.
+          cameraRig.removeAttribute('animation__slide');
+          cameraRig.setAttribute('animation__slide',
+            'property: position; to: 3 2.5 0; dur: 1800; easing: easeInOutCubic');
+
+          if (!isARMode) {
+            sky.setAttribute('visible', true);
+            sky.setAttribute('color', '#111111');
+          }
+        } else {
+          galleryFloor.setAttribute('visible', false);
+          galleryWall.setAttribute('visible', false);
+          galleryAmbient.setAttribute('visible', false);
+          galleryPoint.setAttribute('visible', false);
+
+          // Slide rig back to the day home position
+          cameraRig.removeAttribute('animation__slide');
+          cameraRig.setAttribute('animation__slide',
+            'property: position; to: 0 1.6 0; dur: 1500; easing: easeInOutCubic');
+
+          // Always return to day mode on exit
+          isNightMode = false;
+          document.body.classList.remove('night-mode');
+          dayEls.forEach(function (el) { el.setAttribute('visible', true); });
+          setDayLighting(true);
+
+          cameraRig.removeAttribute('animation__turn');
+          cameraRig.setAttribute('animation__turn',
+            'property: rotation; from: 0 90 0; to: 0 0 0; dur: 1500; easing: easeInOutCubic');
+
+          updateSky();
+        }
+      }
+
+      galleryBtn.addEventListener('click', function (e) {
+        e.preventDefault();
+        setGalleryMode(!isGalleryMode);
+      });
+
       // ── Night mode toggle ──────────────────────────────────────────────────────
       btn.addEventListener('click', function (e) {
         e.preventDefault();
+        if (isGalleryMode) return;  // night toggle disabled while gallery is active
         isNightMode = !isNightMode;
 
         updateSky();
@@ -387,6 +535,8 @@
           orbitSphere.setAttribute('material', 'emissive', '#44FFD1');
           orbitSphere.setAttribute('material', 'emissiveIntensity', 0.75);
 
+          setDayLighting(false);
+          setNightLighting(true);
           setBounceAnimation(true);
           setPlaneAnimation(true);
           setNightPlaneScalePulse(true);
@@ -411,6 +561,8 @@
           orbitRig.setAttribute('visible', false);
           orbitSphere.setAttribute('material', 'emissiveIntensity', 0);
 
+          setDayLighting(true);
+          setNightLighting(false);
           setBounceAnimation(false);
           setPlaneAnimation(false);
           setNightPlaneScalePulse(false);
@@ -455,6 +607,90 @@
 
         cameraRig.setAttribute('animation__zoom',
           'property: position; to: 0 1.25 6; dur: 2500; easing: easeInOutCubic');
+      });
+
+      // ── Gallery canvas textures (Hydra) ────────────────────────────────────────
+      // Hydra renders into a hidden off-screen canvas. Once A-Frame fires 'loaded'
+      // we grab the Three.js mesh from each gallery plane, replace its material map
+      // with a THREE.CanvasTexture pointing at the Hydra canvas, and run a RAF loop
+      // that sets needsUpdate = true every frame so Three.js re-uploads the latest
+      // Hydra pixels to the GPU each tick. THREE is exposed globally by A-Frame.
+
+      const hydraCanvas = document.createElement('canvas');
+      hydraCanvas.width  = 512;
+      hydraCanvas.height = 512;
+      hydraCanvas.style.display = 'none';
+      document.body.appendChild(hydraCanvas);
+
+      // Hydra exposes osc / noise / shape / etc. as globals after instantiation
+      const galleryHydra = new Hydra({
+        canvas: hydraCanvas,
+        detectAudio: false,
+        width:  512,
+        height: 512
+      });
+
+      // ── Hydra sketch ───────────────────────────────────────────────────────────
+      /*// Phlox: #bb5ff9  |  Aquamarine: #56f5d2  |  Argentinian Blue: #45a8f0
+      osc(10, 0.01, 1.4)
+        .rotate(0.1, 0.1)
+        .kaleid(6)
+        .blend(
+          noise(3, 0.1)
+            .color(0.33, 0.96, 0.82)   // Aquamarine
+            .pixelate(20, 20)
+            .scrollX(0.1)
+        )
+        .modulate(
+          shape(4, 0.5, 0.1)
+            .color(0.27, 0.66, 0.94)   // Argentinian blue
+            .rotate(0.5, 0.1)
+        )
+        .contrast(1.4)
+        .brightness(0.1)
+        .scrollY(0, 0.1)
+        .out();
+        */
+
+
+
+osc(5, 0.9, 0.001)
+    .kaleid([3,4,5,7,8,9,10].fast(0.1))
+    .color(0.5, 0.3)
+    .colorama(0.4)
+    .rotate(0.009,()=>Math.sin(time)* -0.001 )
+    .modulateRotate(o0,()=>Math.sin(time) * 0.003)
+    .modulate(o0, 0.9)
+    .scale(0.9)
+	  .hue(1)
+    .out(o0)
+
+      // Mount as texture once A-Frame has built all entity meshes
+      document.querySelector('a-scene').addEventListener('loaded', function () {
+        const galleryTex = new THREE.CanvasTexture(hydraCanvas);
+
+        var floorMesh = galleryFloor.getObject3D('mesh');
+        var wallMesh  = galleryWall.getObject3D('mesh');
+
+        if (floorMesh) {
+          floorMesh.material.map = galleryTex;
+          // Clear the plane's black color; material color multiplies the texture,
+          // so white (0xffffff) passes the texture through unmodified.
+          floorMesh.material.color.set(0xffffff);
+          floorMesh.material.needsUpdate = true;
+        }
+        if (wallMesh) {
+          wallMesh.material.map = galleryTex;
+          wallMesh.material.color.set(0xffffff);
+          wallMesh.material.needsUpdate = true;
+        }
+
+        // RAF loop — marks the shared texture dirty every frame so Three.js
+        // re-uploads Hydra's latest render. Both planes share one texture object.
+        (function tick() {
+          galleryTex.needsUpdate = true;
+          requestAnimationFrame(tick);
+        })();
       });
     </script>
   </body>
