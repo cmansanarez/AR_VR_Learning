@@ -57,8 +57,9 @@
       <!-- Day: warm ambient fills the scene; directional sun sweeps east→west.
            Adding ANY <a-light> disables A-Frame's built-in defaults, so we
            replace them explicitly here. -->
-      <a-light id="day-ambient" type="ambient"     color="#fff5e0" intensity="0.6"></a-light>
-      <a-light id="sun"         type="directional" color="#ffe87a" intensity="1.2" castshadow="true"
+      <a-light id="day-ambient" type="ambient"     color="#fff5e0" intensity="1.0"></a-light>
+      <a-light id="day-point"   type="point"       color="#ff69b4" intensity="1.4" distance="5" position="0 2.5 -5.5"></a-light>
+      <a-light id="sun"         type="directional" color="#ffe87a" intensity="1.8" castshadow="true"
                position="-6 8 -2"
                animation__sweep="property: position; from: -8 8 -2; to: 8 8 -2; dir: alternate; dur: 12000; loop: true; easing: linear"></a-light>
 
@@ -140,6 +141,7 @@
       const galleryWall            = document.querySelector('#gallery-wall');
       const galleryBtn             = document.querySelector('#galleryBtn');
       const dayAmbient             = document.querySelector('#day-ambient');
+      const dayPoint               = document.querySelector('#day-point');
       const sunLight               = document.querySelector('#sun');
       const nightAmbient           = document.querySelector('#night-ambient');
       const nightPoint             = document.querySelector('#night-point');
@@ -328,6 +330,7 @@
       // the light continuing to move while invisible, so it resumes predictably.
       function setDayLighting(active) {
         dayAmbient.setAttribute('visible', active);
+        dayPoint.setAttribute('visible', active);
         sunLight.setAttribute('visible', active);
         sunLight.setAttribute('animation__sweep', 'autoplay', active);
       }
