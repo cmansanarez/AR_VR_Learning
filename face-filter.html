@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+  <title>Face Filter</title>
+  <script src="https://aframe.io/releases/1.7.1/aframe.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mind-ar@1.2.5/dist/mindar-face-aframe.prod.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { overflow: hidden; background: #000; font-family: sans-serif; }
+
+    /* ── Page transition overlay ──────────────────────── */
+    #page-transition {
+      position: fixed;
+      inset: 0;
+      background: #000;
+      opacity: 1;
+      z-index: 99999;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+    }
+    #page-transition.faded { opacity: 0; }
+
+    /* ── Back button ───────────────────────────────────── */
+    #backBtn {
+      position: fixed;
+      bottom: 28px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.72);
+      border: 2px solid rgba(255, 255, 255, 0.25);
+      border-radius: 28px;
+      padding: 10px 18px;
+      font-size: 14px;
+      font-weight: 600;
+      color: #fff;
+      cursor: pointer;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+      transition: transform 0.1s ease, background 0.2s ease;
+      user-select: none;
+    }
+    #backBtn:hover { background: rgba(0, 0, 0, 0.88); }
+    #backBtn:active { transform: scale(0.93); }
+
+    /* ── Info toast ────────────────────────────────────── */
+    #info {
+      position: fixed;
+      top: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.72);
+      color: #fff;
+      padding: 8px 18px;
+      border-radius: 20px;
+      font-size: 13px;
+      text-align: center;
+      max-width: 90vw;
+      z-index: 9999;
+      pointer-events: none;
+      transition: opacity 0.5s ease;
+      white-space: nowrap;
+    }
+    #info.hidden { opacity: 0; }
+  </style>
+</head>
+<body>
+
+  <div id="page-transition"></div>
+  <div id="info">Face your camera at yourself</div>
+  <button id="backBtn">← Back</button>
+
+  <!-- ── MindAR Face Tracking Scene ─────────────────── -->
+  <!--
+    mindar-face starts the face mesh automatically.
+    Each <a-entity mindar-face-target="anchorIndex: N"> attaches
+    a child object to face landmark N in MindAR's 468-point mesh.
+    The face is normalized: ~1 unit wide, z-axis pointing toward camera.
+  -->
+  <a-scene
+    mindar-face
+    embedded
+    color-space="sRGB"
+    vr-mode-ui="enabled: false"
+    renderer="colorManagement: true; antialias: true"
+  >
+    <!-- Camera must be inactive; MindAR drives the projection -->
+    <a-camera active="false" position="0 0 0"></a-camera>
+
+    <!-- ── FOREHEAD HALO (landmark 10: top of forehead) ─
+         A flat teal torus that spins horizontally like a crown.
+         Offset upward (+y) so it floats above the hairline. -->
+    <a-entity mindar-face-target="anchorIndex: 10">
+      <a-torus
+        position="0 0.15 0"
+        rotation="90 0 0"
+        radius="0.16"
+        radius-tubular="0.018"
+        color="#00e5cc"
+        material="emissive: #00e5cc; emissiveIntensity: 0.85; roughness: 0.2; metalness: 0.5"
+        animation__spin="property: rotation; from: 90 0 0; to: 90 360 0; loop: true; dur: 2200; easing: linear"
+        animation__pulse="property: material.emissiveIntensity; from: 0.5; to: 1.0; dir: alternate; loop: true; dur: 1000; easing: easeInOutSine">
+      </a-torus>
+      <!-- Inner smaller counter-spinning ring -->
+      <a-torus
+        position="0 0.15 0"
+        rotation="90 0 0"
+        radius="0.10"
+        radius-tubular="0.01"
+        color="#8B00FF"
+        material="emissive: #8B00FF; emissiveIntensity: 0.9"
+        animation="property: rotation; from: 90 0 0; to: 90 -360 0; loop: true; dur: 1600; easing: linear">
+      </a-torus>
+    </a-entity>
+
+    <!-- ── RIGHT EYE GEM (landmark 33: right eye outer corner) ─
+         Pink pulsing sphere that floats just in front of the eye. -->
+    <a-entity mindar-face-target="anchorIndex: 33">
+      <a-sphere
+        position="0 0.015 0.04"
+        radius="0.03"
+        color="#ff1d89"
+        material="emissive: #ff1d89; emissiveIntensity: 0.95; roughness: 0.1"
+        animation="property: scale; from: 0.7 0.7 0.7; to: 1.3 1.3 1.3; dir: alternate; loop: true; dur: 600; easing: easeInOutSine">
+      </a-sphere>
+    </a-entity>
+
+    <!-- ── LEFT EYE GEM (landmark 263: left eye outer corner) ── -->
+    <a-entity mindar-face-target="anchorIndex: 263">
+      <a-sphere
+        position="0 0.015 0.04"
+        radius="0.03"
+        color="#ff1d89"
+        material="emissive: #ff1d89; emissiveIntensity: 0.95; roughness: 0.1"
+        animation="property: scale; from: 0.7 0.7 0.7; to: 1.3 1.3 1.3; dir: alternate; loop: true; dur: 600; easing: easeInOutSine">
+      </a-sphere>
+    </a-entity>
+
+    <!-- ── NOSE TIP (landmark 4: tip of nose) ─────────────────
+         Small yellow sphere, softly bouncing. -->
+    <a-entity mindar-face-target="anchorIndex: 4">
+      <a-sphere
+        position="0 0 0.045"
+        radius="0.022"
+        color="#ffec00"
+        material="emissive: #ffec00; emissiveIntensity: 0.85"
+        animation="property: position; from: 0 0 0.045; to: 0 0.015 0.045; dir: alternate; loop: true; dur: 900; easing: easeInOutSine">
+      </a-sphere>
+    </a-entity>
+
+    <!-- ── RIGHT CHEEK RING (landmark 234) ────────────────────
+         Neon torus lying flat on the cheek, slowly rotating. -->
+    <a-entity mindar-face-target="anchorIndex: 234">
+      <a-torus
+        position="0 0 0.03"
+        rotation="0 0 0"
+        radius="0.055"
+        radius-tubular="0.008"
+        color="#304ffe"
+        material="emissive: #304ffe; emissiveIntensity: 0.8"
+        animation="property: rotation; from: 0 0 0; to: 0 360 0; loop: true; dur: 3000; easing: linear">
+      </a-torus>
+    </a-entity>
+
+    <!-- ── LEFT CHEEK RING (landmark 454) ─────────────────────  -->
+    <a-entity mindar-face-target="anchorIndex: 454">
+      <a-torus
+        position="0 0 0.03"
+        rotation="0 0 0"
+        radius="0.055"
+        radius-tubular="0.008"
+        color="#304ffe"
+        material="emissive: #304ffe; emissiveIntensity: 0.8"
+        animation="property: rotation; from: 0 0 0; to: 0 -360 0; loop: true; dur: 3000; easing: linear">
+      </a-torus>
+    </a-entity>
+
+    <!-- ── CHIN GEM (landmark 152: chin center) ───────────────
+         Spinning blue box hanging below the chin. -->
+    <a-entity mindar-face-target="anchorIndex: 152">
+      <a-box
+        position="0 -0.07 0"
+        width="0.055"
+        height="0.055"
+        depth="0.055"
+        color="#304ffe"
+        material="emissive: #304ffe; emissiveIntensity: 0.75; roughness: 0.2; metalness: 0.6"
+        animation__spin="property: rotation; from: 0 0 0; to: 360 360 0; loop: true; dur: 2800; easing: linear"
+        animation__pulse="property: material.emissiveIntensity; from: 0.4; to: 0.9; dir: alternate; loop: true; dur: 700; easing: easeInOutSine">
+      </a-box>
+    </a-entity>
+
+  </a-scene>
+
+  <script>
+    const backBtn        = document.getElementById('backBtn');
+    const pageTransition = document.getElementById('page-transition');
+    const info           = document.getElementById('info');
+
+    // Fade in on load
+    setTimeout(() => pageTransition.classList.add('faded'), 100);
+
+    // Hide info toast after 4s
+    setTimeout(() => info.classList.add('hidden'), 4000);
+
+    // Back button
+    backBtn.addEventListener('click', () => {
+      pageTransition.classList.remove('faded');
+      setTimeout(() => { window.location.href = 'index.html'; }, 550);
+    });
+  </script>
+
+</body>
+</html>

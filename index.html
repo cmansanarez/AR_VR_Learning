@@ -99,6 +99,12 @@
     <!-- Marker AR button: transitions to the AR.js marker experience -->
     <a id="markerBtn" href="#" title="AR Marker">🎯</a>
 
+    <!-- Image tracking button: transitions to cat figurine AR experience -->
+    <a id="imageTrackingBtn" href="image-tracking.html" title="Cat AR">🐱</a>
+
+    <!-- Face filter button: transitions to neon face filter experience -->
+    <a id="faceFilterBtn" href="face-filter.html" title="Face Filter">✨</a>
+
     <!-- Page transition overlay: fades to black between index and ar-marker -->
     <div id="page-transition"><span>🎯</span><p>AR Marker</p></div>
 
@@ -613,6 +619,17 @@
         setTimeout(function () {
           window.location.href = 'ar-marker.html';
         }, 550);
+      });
+
+      // ── Image tracking + face filter buttons ──────────────────────────────────
+      // Both use the same fade-to-black transition; href drives the destination.
+      ['#imageTrackingBtn', '#faceFilterBtn'].forEach(function (sel) {
+        document.querySelector(sel).addEventListener('click', function (e) {
+          e.preventDefault();
+          var dest = e.currentTarget.getAttribute('href');
+          pageTransition.classList.add('fade-out');
+          setTimeout(function () { window.location.href = dest; }, 550);
+        });
       });
 
       // ── Rainbow easter egg button ─────────────────────────────────────────────
